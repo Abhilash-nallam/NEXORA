@@ -7,8 +7,16 @@ import * as Crypto from 'expo-crypto';
 const ITERATIONS = 200_000;
 const VERSION = 1;
 
-type BackupAccount = { id: string; issuer: string; account: string; algorithm: string; digits: number; period: number; createdAt: number; secret?: string };
-
+type BackupAccount = {
+  id: string;
+  issuer: string;
+  account: string;
+  algorithm: string;
+  digits: number;
+  period: number;
+  createdAt: number;
+  secret: string;
+};
 function randomBytes(n: number) { return Crypto.getRandomBytes(n); }
 
 export async function createBackup(accounts: BackupAccount[], password: string) {

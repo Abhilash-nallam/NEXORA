@@ -181,7 +181,11 @@ export default function App() {
 
   const backupExport = async (password: string) => {
     if (password.length < 10) throw new Error('Use at least 10 characters for the backup password.');
-    const payload = await Promise.all(accounts.map(async a => ({ ...a, secret: await getSecret(a.id) })));
+    const payload = await Promise.all(accounts.map(async a => {
+      const secret = await getSecret(a.id);
+      if (!secret) throw new Error(`Could not read the secret for ${a.issuer}.`);
+      return { ...a, secret };
+    }));
     const backup = await createBackup(payload, password); await Share.share({ message: backup, title: 'NEXORA encrypted backup' }); showToast('Encrypted backup created');
   };
   const backupImport = async (backup: string, password: string) => {
@@ -190,6 +194,7 @@ export default function App() {
     const currentKeys = new Set(accounts.map(a => `${a.issuer}\u0000${a.account}`.toLowerCase()));
     const next = [...accounts]; const nextSecrets = { ...secrets };
     for (const item of imported) {
+      if (!item.secret) throw new Error(`Backup account "${item.account}" is missing its secret.`);
       const key = `${item.issuer}\u0000${item.account}`.toLowerCase();
       if (currentKeys.has(key)) continue;
       const a: Account = { id: uid(), issuer: item.issuer, account: item.account, algorithm: item.algorithm, digits: item.digits, period: item.period, createdAt: item.createdAt || Date.now() };
@@ -206,7 +211,7 @@ export default function App() {
     <SafeAreaView style={styles.root}>
       <StatusBar style="light" />
       <View style={styles.header}><View><Text style={styles.brand}>NEXORA</Text><Text style={styles.subtitle}>Secure authenticator</Text></View><Pressable style={styles.headerButton} onPress={() => setScreen('settings')}><Text style={styles.headerIcon}>⚙</Text></Pressable></View>
-      {screen === 'home' && <Home accounts={accounts} secrets={secrets} now={now} hideCodes={settings.hideCodes} onAdd={() => setScreen('add')} onCopy={copyCode} onEdit={(a) => { setEditing(a); setScreen('edit'); }} onDelete={removeAccount} />}
+      {screen === 'home' && <Home accounts={accounts} secrets={secrets} now={now} hideCodes={settings.hideCodes} onAdd={() => setScreen('add')} onCopy={copyCode} onEdit={(a: Account) => { setEditing(a); setScreen('edit'); }} onDelete={removeAccount} />}
       {screen === 'add' && <AddAccount onBack={() => setScreen('home')} onSave={addAccount} />}
       {screen === 'settings' && <SettingsView settings={settings} accounts={accounts.length} onBack={() => setScreen('home')} onChange={updateSettings} onBackup={() => setScreen('backup')} onLock={() => { setLocked(true); setSecrets({}); }} />}
       {screen === 'edit' && editing && <EditAccount account={editing} secret={secrets[editing.id] || ''} onBack={() => { setEditing(null); setScreen('home'); }} onSave={editAccount} />}

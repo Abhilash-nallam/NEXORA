@@ -6,19 +6,54 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "nexora",
-    "newArchEnabled": true,
+
+    "icon": "./assets/images/icon.png",
+
     "android": {
       "package": "com.nexora.authenticator",
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA"
+      ]
     },
+
     "ios": {
       "bundleIdentifier": "com.nexora.authenticator"
     },
+
     "plugins": [
-      ["expo-camera", { "cameraPermission": "NEXORA uses your camera to scan authenticator QR codes.", "barcodeScannerEnabled": true }],
-      ["expo-local-authentication", { "faceIDPermission": "Allow NEXORA to use Face ID to protect your authenticator vault." }],
-      ["expo-secure-store", { "configureAndroidBackup": true, "faceIDPermission": "Allow NEXORA to protect your authenticator vault with Face ID." }]
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "NEXORA uses your camera to scan authenticator QR codes.",
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow NEXORA to use Face ID to protect your authenticator vault."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Allow NEXORA to protect your authenticator vault with Face ID."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableBundleCompression": true,
+            "useLegacyPackaging": true
+          }
+        }
+      ]
     ],
+
     "extra": {
       "eas": {
         "projectId": "567c6d21-8c8e-4e30-bb46-3c8a4c525fd5"
