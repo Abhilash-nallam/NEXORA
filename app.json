@@ -2,24 +2,27 @@
   "expo": {
     "name": "NEXORA",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "nexora",
-
     "icon": "./assets/images/icon.png",
-
     "android": {
       "package": "com.nexora.authenticator",
+      "versionCode": 2,
       "permissions": [
         "CAMERA"
-      ]
+      ],
+      "icon": "./assets/images/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "monochromeImage": "./assets/images/adaptive-icon-monochrome.png",
+        "backgroundColor": "#07111F"
+      }
     },
-
     "ios": {
       "bundleIdentifier": "com.nexora.authenticator"
     },
-
     "plugins": [
       [
         "expo-camera",
@@ -41,19 +44,9 @@
           "faceIDPermission": "Allow NEXORA to protect your authenticator vault with Face ID."
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
-            "enableBundleCompression": true,
-            "useLegacyPackaging": true
-          }
-        }
-      ]
+      "expo-build-properties",
+      "expo-document-picker"
     ],
-
     "extra": {
       "eas": {
         "projectId": "567c6d21-8c8e-4e30-bb46-3c8a4c525fd5"
