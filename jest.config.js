@@ -7,8 +7,11 @@ module.exports = {
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   transform: {
-    '^.+\\.(ts|tsx|js)$': 'babel-jest',
+    '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['babel-preset-expo'] }],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@noble|otpauth)/)',
+  ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   collectCoverageFrom: [
