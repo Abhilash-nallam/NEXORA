@@ -1,6 +1,6 @@
 {
   "name": "nexora-mobile",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -8,7 +8,14 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "format": "prettier --write .",
+    "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
     "@noble/ciphers": "2.4.0",
@@ -30,8 +37,17 @@
     "react-native": "0.86.3"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^12.4.0",
+    "@types/jest": "^29.5.11",
     "@types/react": "~19.2.2",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
     "babel-preset-expo": "~57.0.10",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "jest-expo": "^50.0.0",
+    "prettier": "^3.1.1",
     "typescript": "~6.0.3"
   }
 }
