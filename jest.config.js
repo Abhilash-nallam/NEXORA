@@ -7,10 +7,10 @@ module.exports = {
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   transform: {
-    '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['babel-preset-expo'] }],
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['babel-preset-expo'] }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@noble|otpauth)/)',
+    'node_modules[\\\\/](?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nents)?|expo-.*|@noble|otpauth)[\\\\/])',
   ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],

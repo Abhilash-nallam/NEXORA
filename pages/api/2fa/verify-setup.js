@@ -1,6 +1,6 @@
 import { requireAuth } from '../../../lib/session';
 import { supabase, isRateLimited, recordAttempt } from '../../../lib/db';
-import { decryptSecret, encryptSecret } from '../../../lib/crypto';
+import { decryptSecret } from '../../../lib/crypto';
 import { verifyToken, generateBackupCodes } from '../../../lib/totp';
 
 // POST /api/2fa/verify-setup   body: { code: "123456" }
