@@ -48,17 +48,18 @@ export default async function handler(req, res) {
     // Accept a backup code here too — someone who just lost their phone
     // and is using their last backup code to log in should still be able
     // to turn 2FA off from settings without needing the authenticator.
-    const isBackupCodeFormat = /^[A-F0-9]{5}-[A-F0-9]{5}$/i.test(code);
+    const rawCode = String(code).trim();
+    const isBackupCodeFormat = /^[A-F0-9]{5}-[A-F0-9]{5}$/i.test(rawCode);
     let verified;
     if (isBackupCodeFormat) {
-      verified = await tryConsumeBackupCode(user.id, code);
+      verified = await tryConsumeBackupCode(user.id, rawCode.toUpperCase());
     } else {
       const secret = decryptSecret(
         row.two_factor_secret_encrypted,
         row.two_factor_secret_iv,
         row.two_factor_secret_tag
       );
-      verified = verifyToken(code, secret);
+      verified = verifyToken(rawCode, secret);
     }
 
     await recordAttempt(user.id, verified);

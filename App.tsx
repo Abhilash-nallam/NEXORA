@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, AppState, FlatList, Image, KeyboardAvoidingView, Platform,
   Pressable, SafeAreaView, ScrollView, Share, StyleSheet, Switch, Text, TextInput, View
@@ -155,7 +155,9 @@ function initials(name: string) {
 }
 
 function validateBase32(secret: string) {
-  return /^[A-Z2-7]+=*$/.test(secret) && secret.length >= 8;
+  if (typeof secret !== 'string') return false;
+  const normalized = normalizeSecret(secret);
+  return /^[A-Z2-7]+=*$/.test(normalized) && normalized.length >= 7;
 }
 
 function health(account: Account, secret: string, now: number) {
@@ -268,6 +270,10 @@ export default function App() {
       if (state !== 'active') {
         backgroundRef.current = true;
         if (settings.privacyMask) setPrivacyMask(true);
+        if (settings.autoLock && settings.biometric && accounts.length) {
+          setLocked(true);
+          setSecrets({});
+        }
       }
       if (state === 'active' && backgroundRef.current) {
         backgroundRef.current = false;
@@ -427,8 +433,15 @@ export default function App() {
 
     if (clipboardTimerRef.current) clearTimeout(clipboardTimerRef.current);
     if (settings.clipboardSeconds > 0) {
-      clipboardTimerRef.current = setTimeout(() => {
-        void Clipboard.setStringAsync('');
+      clipboardTimerRef.current = setTimeout(async () => {
+        try {
+          const current = await Clipboard.getStringAsync();
+          if (current === code) {
+            await Clipboard.setStringAsync('');
+          }
+        } catch {
+          // Ignore clipboard access errors
+        }
       }, settings.clipboardSeconds * 1000);
     }
     showToast(`Code copied • clears in ${settings.clipboardSeconds}s`);
@@ -967,7 +980,7 @@ function AddAccount({ onBack, onSave }: any) {
   );
 }
 
-function EditAccount({ account, secret, onBack, onSave }: any) {
+function EditAccount({ account, _secret, onBack, onSave }: any) {
   const [issuer, setIssuer] = useState(account.issuer);
   const [name, setName] = useState(account.account);
   const [newSecret, setNewSecret] = useState('');

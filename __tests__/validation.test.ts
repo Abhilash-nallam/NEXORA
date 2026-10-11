@@ -1,7 +1,7 @@
 // TOTP and Account Validation Tests
 
 function validateBase32(secret: string): boolean {
-  return /^[A-Z2-7]+=*$/.test(secret) && secret.length >= 8;
+  return typeof secret === 'string' && /^[A-Z2-7]+=*$/.test(secret) && secret.length >= 7;
 }
 
 function normalizeSecret(input: string): string {
@@ -42,13 +42,15 @@ describe('TOTP Secret Validation', () => {
 describe('Account Validation', () => {
   it('should validate required fields', () => {
     const isValidAccount = (account: any) =>
-      account.issuer?.trim() &&
-      account.account?.trim() &&
-      validateBase32(account.secret) &&
-      [6, 8].includes(account.digits) &&
-      ['SHA1', 'SHA256', 'SHA512'].includes(account.algorithm) &&
-      account.period >= 15 &&
-      account.period <= 120;
+      Boolean(
+        account.issuer?.trim() &&
+        account.account?.trim() &&
+        validateBase32(account.secret) &&
+        [6, 8].includes(account.digits) &&
+        ['SHA1', 'SHA256', 'SHA512'].includes(account.algorithm) &&
+        account.period >= 15 &&
+        account.period <= 120
+      );
 
     expect(
       isValidAccount({

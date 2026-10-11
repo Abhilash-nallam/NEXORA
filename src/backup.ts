@@ -113,7 +113,7 @@ export async function restoreBackup(text: string, password: string) {
       }
 
       const secret = a.secret.replace(/[\s-]/g, '').toUpperCase();
-      if (!/^[A-Z2-7]+=*$/.test(secret) || secret.length < 8) {
+      if (!/^[A-Z2-7]+=*$/.test(secret) || secret.length < 7) {
         throw new Error('Backup contains an invalid secret.');
       }
 

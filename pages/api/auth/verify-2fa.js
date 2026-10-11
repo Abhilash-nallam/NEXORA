@@ -1,13 +1,14 @@
 import { supabase, isRateLimited, recordAttempt } from '../../../lib/db';
 import { decryptSecret } from '../../../lib/crypto';
 import { verifyToken } from '../../../lib/totp';
-import { createSessionToken, setSessionCookie, getPendingLoginToken, clearPendingLoginCookie } from '../../../lib/session';
+import { createSessionToken, setSessionCookie, getPendingLoginToken, clearPendingLoginCookie, isSameOrigin } from '../../../lib/session';
 import { tryConsumeBackupCode } from '../../../lib/backupCodes';
 
 // POST /api/auth/verify-2fa   body: { pendingToken, code }
 // `code` can be either a 6-digit TOTP code OR a backup code like "A1B2C-3D4E5".
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!isSameOrigin(req)) return res.status(403).json({ error: 'Cross-origin request rejected.' });
 
   const pendingToken = getPendingLoginToken(req);
   const { code } = req.body;
@@ -18,15 +19,17 @@ export default async function handler(req, res) {
   try {
     const { data: pending, error: pendingErr } = await supabase
       .from('pending_logins')
-      .select('user_id, expires_at')
+      .select('user_id, expires_at, consumed_at')
       .eq('token', pendingToken)
       .single();
 
-    if (pendingErr || !pending) {
-      return res.status(401).json({ error: 'Login session expired. Please log in again.' });
+    if (pendingErr || !pending || pending.consumed_at) {
+      clearPendingLoginCookie(res);
+      return res.status(401).json({ error: 'Login session expired or already used. Please log in again.' });
     }
     if (new Date(pending.expires_at) < new Date()) {
       await supabase.from('pending_logins').delete().eq('token', pendingToken);
+      clearPendingLoginCookie(res);
       return res.status(401).json({ error: 'Login session expired. Please log in again.' });
     }
 
@@ -45,18 +48,19 @@ export default async function handler(req, res) {
       .single();
     if (userErr || !user) throw userErr || new Error('User not found');
 
-    const isBackupCodeFormat = /^[A-F0-9]{5}-[A-F0-9]{5}$/i.test(code);
+    const rawCode = String(code).trim();
+    const isBackupCodeFormat = /^[A-F0-9]{5}-[A-F0-9]{5}$/i.test(rawCode);
     let verified = false;
 
     if (isBackupCodeFormat) {
-      verified = await tryConsumeBackupCode(userId, code);
+      verified = await tryConsumeBackupCode(userId, rawCode.toUpperCase());
     } else {
       const secret = decryptSecret(
         user.two_factor_secret_encrypted,
         user.two_factor_secret_iv,
         user.two_factor_secret_tag
       );
-      verified = verifyToken(code, secret);
+      verified = verifyToken(rawCode, secret);
     }
 
     await recordAttempt(userId, verified);
