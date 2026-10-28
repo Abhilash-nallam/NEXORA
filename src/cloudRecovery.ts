@@ -6,6 +6,7 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
+import { savePasswordEntries } from './passwordVault';
 import {
   getEncryptedPasswordVaultSnapshot,
   storeRecoveredPasswordVault,
@@ -244,13 +245,19 @@ export async function enableEncryptedCloudRecovery(vaultKey: Uint8Array): Promis
   };
   await AsyncStorage.setItem(RECOVERY_META, JSON.stringify(metadata));
   try {
-    const snapshot = await getEncryptedPasswordVaultSnapshot();
-    if (!snapshot) throw new Error('Save at least one password entry before enabling cloud recovery.');
+    let snapshot = await getEncryptedPasswordVaultSnapshot();
+    if (!snapshot) {
+      await savePasswordEntries(vaultKey, []);
+      snapshot = await getEncryptedPasswordVaultSnapshot();
+    }
+    if (!snapshot) throw new Error('Could not prepare an encrypted vault snapshot.');
+    const session = await getGoogleSession();
+    if (!session) throw new Error('Sign in with Google before enabling cloud recovery.');
     await cloudRequest('nexora_password_vaults?on_conflict=user_id', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({
-        user_id: (await getGoogleSession())?.user.id,
+        user_id: session.user.id,
         encrypted_vault: snapshot,
         recovery_salt: metadata.salt,
         key_nonce: metadata.nonce,
