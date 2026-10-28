@@ -122,6 +122,8 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
   const authorize = `${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirect)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=s256`;
   return new Promise<GoogleSession>((resolve, reject) => {
     let settled = false;
+    let timeout: ReturnType<typeof setTimeout>;
+    let subscription: ReturnType<typeof Linking.addEventListener>;
     const finish = (error?: Error, session?: GoogleSession) => {
       if (settled) return;
       settled = true;
@@ -131,7 +133,7 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
       else if (session) resolve(session);
       else reject(new Error('Google sign-in did not complete.'));
     };
-    const subscription = Linking.addEventListener('url', ({ url: callbackUrl }) => {
+    subscription = Linking.addEventListener('url', ({ url: callbackUrl }) => {
       if (!callbackUrl.startsWith(REDIRECT_URI)) return;
       void (async () => {
         try {
@@ -155,7 +157,7 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
         }
       })();
     });
-    const timeout = setTimeout(() => {
+    timeout = setTimeout(() => {
       void SecureStore.deleteItemAsync(PKCE_VERIFIER);
       finish(new Error('Google sign-in timed out. Please try again.'));
     }, 180_000);
@@ -245,6 +247,12 @@ export async function enableEncryptedCloudRecovery(vaultKey: Uint8Array): Promis
     nonce: bytesToHex(nonce),
     wrappedKey: bytesToHex(wrappedKey),
   };
+  const session = await getGoogleSession();
+  if (!session) throw new Error('Sign in with Google before enabling cloud recovery.');
+  const existingRows = await cloudRequest(\`nexora_password_vaults?select=user_id&user_id=eq.\${encodeURIComponent(session.user.id)}\`) as Array<{ user_id: string }>;
+  if (Array.isArray(existingRows) && existingRows.length) {
+    throw new Error('A cloud vault already exists for this account. Restore it with its recovery key before changing devices or recovery settings.');
+  }
   await AsyncStorage.setItem(RECOVERY_META, JSON.stringify(metadata));
   try {
     let snapshot = await getEncryptedPasswordVaultSnapshot();
@@ -253,11 +261,9 @@ export async function enableEncryptedCloudRecovery(vaultKey: Uint8Array): Promis
       snapshot = await getEncryptedPasswordVaultSnapshot();
     }
     if (!snapshot) throw new Error('Could not prepare an encrypted vault snapshot.');
-    const session = await getGoogleSession();
-    if (!session) throw new Error('Sign in with Google before enabling cloud recovery.');
-    await cloudRequest('nexora_password_vaults?on_conflict=user_id', {
+    await cloudRequest('nexora_password_vaults', {
       method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
         user_id: session.user.id,
         encrypted_vault: snapshot,
