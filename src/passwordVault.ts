@@ -21,7 +21,7 @@ export type PasswordEntry = {
   updatedAt: number;
 };
 
-type Envelope = {
+export type PasswordVaultEnvelope = {
   format: 'NEXORA_PASSWORD_VAULT';
   version: number;
   nonce: string;
@@ -43,8 +43,6 @@ export async function unlockPasswordVault(): Promise<Uint8Array> {
     return key;
   }
 
-  // A device-bound random key avoids a master password. It is protected by the
-  // operating system's biometric/device-credential gate and is never synced.
   const key = randomBytes(32);
   await SecureStore.setItemAsync(KEY_NAME, bytesToHex(key), {
     requireAuthentication: true,
@@ -57,18 +55,29 @@ export async function unlockPasswordVault(): Promise<Uint8Array> {
 export async function loadPasswordEntries(key: Uint8Array): Promise<PasswordEntry[]> {
   const raw = await AsyncStorage.getItem(DATA_KEY);
   if (!raw) return [];
-  let envelope: Envelope;
+  let envelope: PasswordVaultEnvelope;
   try {
-    envelope = JSON.parse(raw) as Envelope;
+    envelope = JSON.parse(raw) as PasswordVaultEnvelope;
   } catch {
     throw new Error('The encrypted password vault is damaged.');
   }
-  if (envelope.format !== 'NEXORA_PASSWORD_VAULT' || envelope.version !== VERSION) {
+  return loadPasswordEntriesFromEnvelope(key, envelope);
+}
+
+/** Decrypts and validates an envelope without changing local storage. */
+export async function loadPasswordEntriesFromEnvelope(
+  key: Uint8Array,
+  envelope: PasswordVaultEnvelope,
+): Promise<PasswordEntry[]> {
+  if (key.length !== 32 || !envelope || envelope.format !== 'NEXORA_PASSWORD_VAULT' || envelope.version !== VERSION) {
     throw new Error('Unsupported password vault format.');
   }
   try {
-    const plaintext = xchacha20poly1305(key, hexToBytes(envelope.nonce)).decrypt(hexToBytes(envelope.ciphertext));
-    const entries = JSON.parse(new TextDecoder().decode(plaintext));
+    const nonce = hexToBytes(envelope.nonce);
+    const ciphertext = hexToBytes(envelope.ciphertext);
+    if (nonce.length !== 24 || ciphertext.length < 16) throw new Error('Invalid envelope');
+    const plaintext = xchacha20poly1305(key, nonce).decrypt(ciphertext);
+    const entries: unknown = JSON.parse(new TextDecoder().decode(plaintext));
     if (!Array.isArray(entries)) throw new Error('Invalid vault data');
     return entries.map((entry) => validateEntry(entry));
   } catch {
@@ -76,11 +85,46 @@ export async function loadPasswordEntries(key: Uint8Array): Promise<PasswordEntr
   }
 }
 
+/** Returns only the already-encrypted snapshot suitable for cloud storage. */
+export async function getEncryptedPasswordVaultSnapshot(): Promise<PasswordVaultEnvelope | null> {
+  const raw = await AsyncStorage.getItem(DATA_KEY);
+  if (!raw) return null;
+  try {
+    const envelope = JSON.parse(raw) as PasswordVaultEnvelope;
+    if (envelope.format !== 'NEXORA_PASSWORD_VAULT' || envelope.version !== VERSION ||
+        typeof envelope.nonce !== 'string' || typeof envelope.ciphertext !== 'string') {
+      throw new Error('Invalid envelope');
+    }
+    if (hexToBytes(envelope.nonce).length !== 24 || hexToBytes(envelope.ciphertext).length < 16) {
+      throw new Error('Invalid envelope');
+    }
+    return envelope;
+  } catch {
+    throw new Error('The encrypted password vault is damaged; cloud sync was not attempted.');
+  }
+}
+
+/** Validates remote ciphertext before replacing the device key or local vault. */
+export async function storeRecoveredPasswordVault(
+  key: Uint8Array,
+  envelope: PasswordVaultEnvelope,
+): Promise<PasswordEntry[]> {
+  const entries = await loadPasswordEntriesFromEnvelope(key, envelope);
+  await SecureStore.setItemAsync(KEY_NAME, bytesToHex(key), {
+    requireAuthentication: true,
+    authenticationPrompt: 'Protect your recovered NEXORA password vault',
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  });
+  await AsyncStorage.setItem(DATA_KEY, JSON.stringify(envelope));
+  return entries;
+}
+
 export async function savePasswordEntries(key: Uint8Array, entries: PasswordEntry[]): Promise<void> {
+  if (key.length !== 32) throw new Error('Vault key is invalid.');
   const nonce = randomBytes(24);
   const plaintext = new TextEncoder().encode(JSON.stringify(entries.map(validateEntry)));
   const ciphertext = xchacha20poly1305(key, nonce).encrypt(plaintext);
-  const envelope: Envelope = {
+  const envelope: PasswordVaultEnvelope = {
     format: 'NEXORA_PASSWORD_VAULT',
     version: VERSION,
     nonce: bytesToHex(nonce),
