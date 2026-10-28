@@ -187,7 +187,10 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
       finish(new Error('Google sign-in timed out. Please try again.'));
     }, 180_000);
     void Linking.openURL(authorize).catch((error) => {
-      finish(error instanceof Error ? error : new Error('Could not open Google sign-in.'));
+      void Promise.all([
+        SecureStore.deleteItemAsync(PKCE_VERIFIER),
+        SecureStore.deleteItemAsync(PKCE_STATE),
+      ]).finally(() => finish(error instanceof Error ? error : new Error('Could not open Google sign-in.')));
     });
   });
 }
