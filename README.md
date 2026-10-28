@@ -14,11 +14,15 @@ NEXORA is a modern, privacy-focused Two-Factor Authentication (2FA) ecosystem co
 
 ---
 
-## Password Vault (new in development branch)
+## Password Vault and Encrypted Cloud Recovery
 
-The mobile app now includes a device-local password vault for website credentials, usernames, passwords, categories, and notes. Vault data is encrypted with XChaCha20-Poly1305 before persistence, using a random device-bound key held by Expo SecureStore behind the operating system's authentication prompt. The vault adds no master password and keeps the existing TOTP authenticator available.
+The mobile app combines the existing TOTP authenticator with a device-local password vault. Password entries are encrypted with XChaCha20-Poly1305 before persistence. Google Sign-In via Supabase Auth (PKCE) can authorize encrypted cloud recovery; Google identity is not used as an encryption key.
 
-**Scope note:** this initial implementation is local-only. Google Sign-In, cloud sync, and cross-device recovery are not yet wired; Google authentication is identity, not an encryption key. Review [Password Vault implementation notes](docs/PASSWORD_VAULT.md) before using this as a production password manager.
+Cloud recovery requires the Supabase Google provider, the app redirect URL, public Expo environment variables, and the SQL migration in [Password Vault and Cloud Recovery notes](docs/PASSWORD_VAULT.md). The app uploads only encrypted vault data and a recovery-key-wrapped vault key. A random 256-bit recovery key is shown once and must be saved privately; Google Sign-In alone cannot decrypt a vault if that key is lost. TOTP secrets remain in the existing local authenticator and are not uploaded by this feature.
+
+This integration must pass CI and physical-device/cloud tests before a production release. Never put Supabase service-role keys or Google client secrets in the mobile app.
+
+---
 
 ## Table of Contents
 
