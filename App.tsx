@@ -271,7 +271,7 @@ export default function App() {
       if (state !== 'active') {
         backgroundRef.current = true;
         if (settings.privacyMask) setPrivacyMask(true);
-        if (settings.autoLock && settings.biometric && accounts.length) {
+        if (settings.autoLock && settings.biometric && (accounts.length || screen === 'passwords')) {
           setLocked(true);
           setSecrets({});
         }
@@ -279,14 +279,14 @@ export default function App() {
       if (state === 'active' && backgroundRef.current) {
         backgroundRef.current = false;
         setPrivacyMask(false);
-        if (settings.autoLock && settings.biometric && accounts.length) {
+        if (settings.autoLock && settings.biometric && (accounts.length || screen === 'passwords')) {
           setLocked(true);
           setSecrets({});
         }
       }
     });
     return () => sub.remove();
-  }, [accounts.length, settings.autoLock, settings.biometric, settings.privacyMask]);
+  }, [accounts.length, screen, settings.autoLock, settings.biometric, settings.privacyMask]);
 
   const unlock = async () => {
     const ok = await authenticate();
