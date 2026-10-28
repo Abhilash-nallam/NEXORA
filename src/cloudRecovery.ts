@@ -18,6 +18,7 @@ const SESSION_REFRESH = 'nexora.google.refresh-token.v1';
 const SESSION_EXPIRY = 'nexora.google.expires-at.v1';
 const SESSION_USER = 'nexora.google.user.v1';
 const PKCE_VERIFIER = 'nexora.google.pkce-verifier.v1';
+const PKCE_STATE = 'nexora.google.pkce-state.v1';
 const RECOVERY_META = 'nexora.password-vault.recovery-envelope.v1';
 const REDIRECT_URI = 'nexora://auth/callback';
 const RECOVERY_ITERATIONS = 250_000;
@@ -107,6 +108,45 @@ async function authRequest(path: string, body: Record<string, unknown>) {
   return data;
 }
 
+async function completeOAuthCallback(callbackUrl: string): Promise<GoogleSession> {
+  const params = parseQuery(callbackUrl);
+  try {
+    const [savedVerifier, savedState] = await Promise.all([
+      SecureStore.getItemAsync(PKCE_VERIFIER),
+      SecureStore.getItemAsync(PKCE_STATE),
+    ]);
+    if (!savedVerifier || !savedState || params.state !== savedState) {
+      throw new Error('Sign-in verification failed. Please try again.');
+    }
+    if (params.error || params.error_description) {
+      throw new Error(params.error_description || params.error || 'Google sign-in was cancelled.');
+    }
+    if (!params.code) throw new Error('No authorization code was returned.');
+    const tokens = await authRequest('token?grant_type=pkce', {
+      auth_code: params.code,
+      code_verifier: savedVerifier,
+    });
+    await Promise.all([
+      SecureStore.deleteItemAsync(PKCE_VERIFIER),
+      SecureStore.deleteItemAsync(PKCE_STATE),
+    ]);
+    return await storeSession(tokens);
+  } catch (error) {
+    await Promise.all([
+      SecureStore.deleteItemAsync(PKCE_VERIFIER).catch(() => undefined),
+      SecureStore.deleteItemAsync(PKCE_STATE).catch(() => undefined),
+    ]);
+    throw error instanceof Error ? error : new Error('Google sign-in failed.');
+  }
+}
+
+/** Handles a deep link that cold-started the app while OAuth was completing. */
+export async function resumeGoogleSignInFromInitialUrl(): Promise<GoogleSession | null> {
+  const initialUrl = await Linking.getInitialURL();
+  if (!initialUrl || !initialUrl.startsWith(REDIRECT_URI)) return null;
+  return completeOAuthCallback(initialUrl);
+}
+
 /** Starts Google OAuth using Supabase Auth PKCE; Google client secrets stay in Supabase, never in the app. */
 export async function signInWithGoogle(): Promise<GoogleSession> {
   const { url } = config();
@@ -117,7 +157,10 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
   const challenge = base64Url(hexToBytes(challengeHex));
   const state = bytesToHex(Crypto.getRandomBytes(16));
   const redirect = `${REDIRECT_URI}?state=${state}`;
-  await SecureStore.setItemAsync(PKCE_VERIFIER, verifier);
+  await Promise.all([
+    SecureStore.setItemAsync(PKCE_VERIFIER, verifier),
+    SecureStore.setItemAsync(PKCE_STATE, state),
+  ]);
 
   const authorize = `${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirect)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=s256`;
   return new Promise<GoogleSession>((resolve, reject) => {
@@ -135,30 +178,12 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
     };
     subscription = Linking.addEventListener('url', ({ url: callbackUrl }) => {
       if (!callbackUrl.startsWith(REDIRECT_URI)) return;
-      void (async () => {
-        try {
-          const params = parseQuery(callbackUrl);
-          if (params.state !== state) throw new Error('Sign-in verification failed. Please try again.');
-          if (params.error || params.error_description) {
-            throw new Error(params.error_description || params.error || 'Google sign-in was cancelled.');
-          }
-          if (!params.code) throw new Error('No authorization code was returned.');
-          const savedVerifier = await SecureStore.getItemAsync(PKCE_VERIFIER);
-          if (!savedVerifier || savedVerifier !== verifier) throw new Error('Sign-in session expired. Please try again.');
-          const tokens = await authRequest('token?grant_type=pkce', {
-            auth_code: params.code,
-            code_verifier: savedVerifier,
-          });
-          await SecureStore.deleteItemAsync(PKCE_VERIFIER);
-          finish(undefined, await storeSession(tokens));
-        } catch (error) {
-          await SecureStore.deleteItemAsync(PKCE_VERIFIER).catch(() => undefined);
-          finish(error instanceof Error ? error : new Error('Google sign-in failed.'));
-        }
-      })();
+      void completeOAuthCallback(callbackUrl)
+        .then((session) => finish(undefined, session))
+        .catch((error) => finish(error instanceof Error ? error : new Error('Google sign-in failed.')));
     });
     timeout = setTimeout(() => {
-      void SecureStore.deleteItemAsync(PKCE_VERIFIER);
+      void Promise.all([SecureStore.deleteItemAsync(PKCE_VERIFIER), SecureStore.deleteItemAsync(PKCE_STATE)]);
       finish(new Error('Google sign-in timed out. Please try again.'));
     }, 180_000);
     void Linking.openURL(authorize).catch((error) => {
