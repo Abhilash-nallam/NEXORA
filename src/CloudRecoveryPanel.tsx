@@ -6,6 +6,7 @@ import {
   getGoogleSession,
   hasLocalRecoveryEnabled,
   restoreEncryptedCloudVault,
+  resumeGoogleSignInFromInitialUrl,
   signInWithGoogle,
   signOutGoogle,
   syncEncryptedCloudVault,
@@ -30,14 +31,21 @@ export default function CloudRecoveryPanel({ vaultKey, hasLocalEntries, onRestor
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getGoogleSession().catch(() => null), hasLocalRecoveryEnabled()])
-      .then(([savedSession, enabled]) => {
+    void (async () => {
+      try {
+        const resumed = await resumeGoogleSignInFromInitialUrl();
+        const [savedSession, enabled] = await Promise.all([
+          resumed ? Promise.resolve(resumed) : getGoogleSession().catch(() => null),
+          hasLocalRecoveryEnabled(),
+        ]);
         if (active) {
           setSession(savedSession);
           setRecoveryEnabled(enabled);
         }
-      })
-      .catch(() => undefined);
+      } catch (error) {
+        if (active) setStatus(error instanceof Error ? error.message : 'Google sign-in could not be resumed.');
+      }
+    })();
     return () => { active = false; };
   }, []);
 
