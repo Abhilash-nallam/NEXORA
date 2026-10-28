@@ -15,6 +15,7 @@ import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as OTPAuth from 'otpauth';
 import { createBackup, restoreBackup } from './src/backup';
+import PasswordVaultView from './src/PasswordVaultView';
 
 export type Account = {
   id: string;
@@ -203,7 +204,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const [screen, setScreen] = useState<'home' | 'add' | 'settings' | 'edit' | 'backup' | 'security' | 'about'>('home');
+  const [screen, setScreen] = useState<'home' | 'add' | 'settings' | 'edit' | 'backup' | 'security' | 'about' | 'passwords'>('home');
   const [editing, setEditing] = useState<Account | null>(null);
   const [toast, setToast] = useState('');
   const [query, setQuery] = useState('');
@@ -270,7 +271,7 @@ export default function App() {
       if (state !== 'active') {
         backgroundRef.current = true;
         if (settings.privacyMask) setPrivacyMask(true);
-        if (settings.autoLock && settings.biometric && accounts.length) {
+        if (settings.autoLock && settings.biometric && (accounts.length || screen === 'passwords')) {
           setLocked(true);
           setSecrets({});
         }
@@ -278,14 +279,14 @@ export default function App() {
       if (state === 'active' && backgroundRef.current) {
         backgroundRef.current = false;
         setPrivacyMask(false);
-        if (settings.autoLock && settings.biometric && accounts.length) {
+        if (settings.autoLock && settings.biometric && (accounts.length || screen === 'passwords')) {
           setLocked(true);
           setSecrets({});
         }
       }
     });
     return () => sub.remove();
-  }, [accounts.length, settings.autoLock, settings.biometric, settings.privacyMask]);
+  }, [accounts.length, screen, settings.autoLock, settings.biometric, settings.privacyMask]);
 
   const unlock = async () => {
     const ok = await authenticate();
@@ -585,9 +586,11 @@ export default function App() {
           }}
           onSettings={() => setScreen('settings')}
           onSecurity={() => setScreen('security')}
+          onPasswordVault={() => setScreen('passwords')}
         />
       )}
       {screen === 'add' && <AddAccount onBack={() => setScreen('home')} onSave={addAccount} />}
+      {screen === 'passwords' && <PasswordVaultView onBack={() => setScreen('home')} onToast={showToast} />}
       {screen === 'settings' && (
         <SettingsView
           settings={settings}
@@ -769,6 +772,7 @@ function Home(props: any) {
           <Text style={styles.subtitle}>Smart Vault • {props.accounts.length} accounts</Text>
         </View>
         <View style={styles.headerActions}>
+          <Pressable style={styles.headerButton} onPress={props.onPasswordVault} accessibilityLabel="Open password vault"><Text style={styles.headerIcon}>🔑</Text></Pressable>
           <Pressable style={styles.headerButton} onPress={props.onSecurity}><Text style={styles.headerIcon}>🛡</Text></Pressable>
           <Pressable style={styles.headerButton} onPress={props.onSettings}><Text style={styles.headerIcon}>⚙</Text></Pressable>
         </View>
