@@ -6,9 +6,9 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
-import { savePasswordEntries } from './passwordVault';
 import {
   getEncryptedPasswordVaultSnapshot,
+  savePasswordEntries,
   storeRecoveredPasswordVault,
   type PasswordVaultEnvelope,
 } from './passwordVault';
@@ -210,13 +210,17 @@ export async function getGoogleSession(): Promise<GoogleSession | null> {
 }
 
 export async function signOutGoogle(): Promise<void> {
-  const { url, anonKey } = config();
   const accessToken = await SecureStore.getItemAsync(SESSION_ACCESS);
   if (accessToken) {
-    await fetch(`${url}/auth/v1/logout`, {
-      method: 'POST',
-      headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
-    }).catch(() => undefined);
+    try {
+      const { url, anonKey } = config();
+      await fetch(`${url}/auth/v1/logout`, {
+        method: 'POST',
+        headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
+      }).catch(() => undefined);
+    } catch {
+      // Always clear local tokens, even if the project configuration is missing.
+    }
   }
   await Promise.all([
     SecureStore.deleteItemAsync(SESSION_ACCESS),
