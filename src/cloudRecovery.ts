@@ -1,5 +1,5 @@
 import * as Crypto from 'expo-crypto';
-import * as Linking from 'react-native';
+import { Linking } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
@@ -130,7 +130,7 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
       else if (session) resolve(session);
       else reject(new Error('Google sign-in did not complete.'));
     };
-    const subscription = Linking.Linking.addEventListener('url', ({ url: callbackUrl }) => {
+    const subscription = Linking.addEventListener('url', ({ url: callbackUrl }) => {
       if (!callbackUrl.startsWith(REDIRECT_URI)) return;
       void (async () => {
         try {
@@ -158,7 +158,7 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
       void SecureStore.deleteItemAsync(PKCE_VERIFIER);
       finish(new Error('Google sign-in timed out. Please try again.'));
     }, 180_000);
-    void Linking.Linking.openURL(authorize).catch((error) => {
+    void Linking.openURL(authorize).catch((error) => {
       finish(error instanceof Error ? error : new Error('Could not open Google sign-in.'));
     });
   });
