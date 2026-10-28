@@ -14,6 +14,12 @@ NEXORA is a modern, privacy-focused Two-Factor Authentication (2FA) ecosystem co
 
 ---
 
+## Password Vault (new in development branch)
+
+The mobile app now includes a device-local password vault for website credentials, usernames, passwords, categories, and notes. Vault data is encrypted with XChaCha20-Poly1305 before persistence, using a random device-bound key held by Expo SecureStore behind the operating system's authentication prompt. The vault adds no master password and keeps the existing TOTP authenticator available.
+
+**Scope note:** this initial implementation is local-only. Google Sign-In, cloud sync, and cross-device recovery are not yet wired; Google authentication is identity, not an encryption key. Review [Password Vault implementation notes](docs/PASSWORD_VAULT.md) before using this as a production password manager.
+
 ## Table of Contents
 
 - [What is NEXORA?](#what-is-nexora)
