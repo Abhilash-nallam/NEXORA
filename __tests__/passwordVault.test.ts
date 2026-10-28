@@ -1,25 +1,25 @@
 import { loadPasswordEntries, savePasswordEntries, unlockPasswordVault } from '../src/passwordVault';
 
-const secureValues = new Map<string, string>();
-const asyncValues = new Map<string, string>();
+const mockSecureValues = new Map<string, string>();
+const mockAsyncValues = new Map<string, string>();
 
 jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn(async (key: string) => secureValues.get(key) ?? null),
-  setItemAsync: jest.fn(async (key: string, value: string) => { secureValues.set(key, value); }),
+  getItemAsync: jest.fn(async (key: string) => mockSecureValues.get(key) ?? null),
+  setItemAsync: jest.fn(async (key: string, value: string) => { mockSecureValues.set(key, value); }),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
   default: {
-    getItem: jest.fn(async (key: string) => asyncValues.get(key) ?? null),
-    setItem: jest.fn(async (key: string, value: string) => { asyncValues.set(key, value); }),
+    getItem: jest.fn(async (key: string) => mockAsyncValues.get(key) ?? null),
+    setItem: jest.fn(async (key: string, value: string) => { mockAsyncValues.set(key, value); }),
   },
 }));
 
 describe('encrypted password vault', () => {
   beforeEach(() => {
-    secureValues.clear();
-    asyncValues.clear();
+    mockSecureValues.clear();
+    mockAsyncValues.clear();
     jest.clearAllMocks();
   });
 
@@ -33,7 +33,7 @@ describe('encrypted password vault', () => {
     };
     await savePasswordEntries(key, [entry]);
 
-    const persisted = [...asyncValues.values()][0];
+    const persisted = [...mockAsyncValues.values()][0];
     expect(persisted).not.toContain('very-secret-value');
     expect(persisted).not.toContain('user@example.com');
     await expect(loadPasswordEntries(key)).resolves.toEqual([entry]);
@@ -46,8 +46,8 @@ describe('encrypted password vault', () => {
       website: '', notes: '', category: 'General', favorite: false,
       createdAt: 1, updatedAt: 1,
     }]);
-    const storedKey = [...asyncValues.keys()][0];
-    asyncValues.set(storedKey, JSON.stringify({
+    const storedKey = [...mockAsyncValues.keys()][0];
+    mockAsyncValues.set(storedKey, JSON.stringify({
       format: 'NEXORA_PASSWORD_VAULT', version: 1, nonce: '00', ciphertext: '00',
     }));
     await expect(loadPasswordEntries(key)).rejects.toThrow('Could not decrypt the password vault');
