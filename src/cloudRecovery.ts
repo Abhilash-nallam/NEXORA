@@ -24,7 +24,7 @@ const RECOVERY_ITERATIONS = 250_000;
 
 type AuthUser = { id: string; email?: string };
 export type GoogleSession = { user: AuthUser; accessToken: string; refreshToken: string; expiresAt: number };
-type RecoveryMetadata = { salt: string; nonce: string; wrappedKey: string };
+type RecoveryMetadata = { userId: string; salt: string; nonce: string; wrappedKey: string };
 type CloudRow = {
   user_id: string;
   encrypted_vault: PasswordVaultEnvelope;
@@ -226,7 +226,7 @@ async function getRecoveryMetadata(): Promise<RecoveryMetadata | null> {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw) as RecoveryMetadata;
-    if (typeof value.salt === 'string' && typeof value.nonce === 'string' && typeof value.wrappedKey === 'string') return value;
+    if (typeof value.userId === 'string' && typeof value.salt === 'string' && typeof value.nonce === 'string' && typeof value.wrappedKey === 'string') return value;
   } catch { /* invalid local metadata is treated as absent */ }
   return null;
 }
@@ -237,18 +237,19 @@ export async function hasLocalRecoveryEnabled(): Promise<boolean> {
 
 export async function enableEncryptedCloudRecovery(vaultKey: Uint8Array): Promise<string> {
   if (vaultKey.length !== 32) throw new Error('The local vault key is invalid.');
+  const session = await getGoogleSession();
+  if (!session) throw new Error('Sign in with Google before enabling cloud recovery.');
   const recoveryCode = bytesToHex(Crypto.getRandomBytes(32));
   const salt = Crypto.getRandomBytes(16);
   const nonce = Crypto.getRandomBytes(24);
   const wrappingKey = await pbkdf2Async(sha256, recoveryCode, salt, { c: RECOVERY_ITERATIONS, dkLen: 32 });
   const wrappedKey = xchacha20poly1305(wrappingKey, nonce).encrypt(vaultKey);
   const metadata: RecoveryMetadata = {
+    userId: session.user.id,
     salt: bytesToHex(salt),
     nonce: bytesToHex(nonce),
     wrappedKey: bytesToHex(wrappedKey),
   };
-  const session = await getGoogleSession();
-  if (!session) throw new Error('Sign in with Google before enabling cloud recovery.');
   const existingRows = await cloudRequest(`nexora_password_vaults?select=user_id&user_id=eq.${encodeURIComponent(session.user.id)}`) as Array<{ user_id: string }>;
   if (Array.isArray(existingRows) && existingRows.length) {
     throw new Error('A cloud vault already exists for this account. Restore it with its recovery key before changing devices or recovery settings.');
@@ -287,6 +288,7 @@ export async function syncEncryptedCloudVault(): Promise<void> {
   if (!snapshot) throw new Error('There is no saved vault snapshot to sync.');
   const session = await getGoogleSession();
   if (!session) throw new Error('Sign in with Google before syncing.');
+  if (metadata.userId !== session.user.id) throw new Error('This recovery setup belongs to a different Google account. Sign back into that account before syncing.');
   await cloudRequest('nexora_password_vaults?on_conflict=user_id', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -323,6 +325,7 @@ export async function restoreEncryptedCloudVault(recoveryCodeInput: string): Pro
     if (vaultKey.length !== 32) throw new Error('Invalid recovered vault key.');
     await storeRecoveredPasswordVault(vaultKey, row.encrypted_vault);
     await AsyncStorage.setItem(RECOVERY_META, JSON.stringify({
+      userId: row.user_id,
       salt: row.recovery_salt,
       nonce: row.key_nonce,
       wrappedKey: row.wrapped_key,
