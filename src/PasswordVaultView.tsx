@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
@@ -25,6 +25,7 @@ export default function PasswordVaultView({ onBack, onToast }: Props) {
   const [notes, setNotes] = useState('');
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [showForm, setShowForm] = useState(false);
+  const clipboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +42,21 @@ export default function PasswordVaultView({ onBack, onToast }: Props) {
     })();
     return () => { active = false; };
   }, []);
+
+  const copySensitiveValue = async (value: string, label: string) => {
+    try {
+      await Clipboard.setStringAsync(value);
+      if (clipboardTimerRef.current) clearTimeout(clipboardTimerRef.current);
+      clipboardTimerRef.current = setTimeout(() => {
+        void Clipboard.getStringAsync()
+          .then((current) => current === value ? Clipboard.setStringAsync('') : undefined)
+          .catch(() => undefined);
+      }, 30_000);
+      onToast(`${label} copied; clipboard clears in 30 seconds`);
+    } catch {
+      Alert.alert('Clipboard', `Could not copy ${label.toLowerCase()}.`);
+    }
+  };
 
   const resetForm = () => {
     setEditing(null); setTitle(''); setUsername(''); setPassword('');
@@ -138,7 +154,7 @@ export default function PasswordVaultView({ onBack, onToast }: Props) {
               <Text style={styles.password} selectable={false}>{revealed[item.id] ? item.password : '••••••••••••'}</Text>
               {!!item.website && <Text style={styles.hint}>{item.website}</Text>}
               <View style={styles.actions}>
-                <Pressable style={styles.small} onPress={() => void Clipboard.setStringAsync(item.password).then(() => onToast('Password copied to clipboard')).catch(() => Alert.alert('Clipboard', 'Could not copy password.'))}><Text style={styles.smallText}>Copy password</Text></Pressable>
+                <Pressable style={styles.small} onPress={() => void copySensitiveValue(item.password, 'Password')}><Text style={styles.smallText}>Copy password</Text></Pressable>
                 <Pressable style={styles.small} onPress={() => startEdit(item)}><Text style={styles.smallText}>Edit</Text></Pressable>
                 <Pressable style={styles.small} onPress={() => remove(item)}><Text style={[styles.smallText, { color: '#F49A9A' }]}>Delete</Text></Pressable>
               </View>
