@@ -199,7 +199,9 @@ export async function signOutGoogle(): Promise<void> {
   ]);
 }
 
-type CloudRequestOptions = { method?: string; headers?: Record<string, string>; body?: string };\n\nasync function cloudRequest(path: string, init: CloudRequestOptions = {}) {
+type CloudRequestOptions = { method?: string; headers?: Record<string, string>; body?: string };
+
+async function cloudRequest(path: string, init: CloudRequestOptions = {}) {
   const { url, anonKey } = config();
   const session = await getGoogleSession();
   if (!session) throw new Error('Sign in with Google before using cloud recovery.');
