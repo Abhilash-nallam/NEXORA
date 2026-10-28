@@ -1,4 +1,4 @@
-import { loadPasswordEntries, savePasswordEntries, unlockPasswordVault } from '../src/passwordVault';
+import { getEncryptedPasswordVaultSnapshot, loadPasswordEntries, savePasswordEntries, storeRecoveredPasswordVault, unlockPasswordVault } from '../src/passwordVault';
 
 const mockSecureValues = new Map<string, string>();
 const mockAsyncValues = new Map<string, string>();
