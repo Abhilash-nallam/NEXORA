@@ -6,6 +6,8 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import { PasswordEntry, unlockPasswordVault, loadPasswordEntries, savePasswordEntries } from './passwordVault';
+import CloudRecoveryPanel from './CloudRecoveryPanel';
+import { getGoogleSession, hasLocalRecoveryEnabled, syncEncryptedCloudVault } from './cloudRecovery';
 
 type Props = { onBack: () => void; onToast: (message: string) => void };
 
@@ -49,6 +51,13 @@ export default function PasswordVaultView({ onBack, onToast }: Props) {
     if (!key) throw new Error('Unlock the password vault first.');
     await savePasswordEntries(key, next);
     setEntries(next);
+    try {
+      if (await hasLocalRecoveryEnabled() && await getGoogleSession()) {
+        await syncEncryptedCloudVault();
+      }
+    } catch {
+      onToast('Saved locally; cloud sync failed.');
+    }
   };
 
   const submit = async () => {
@@ -117,6 +126,7 @@ export default function PasswordVaultView({ onBack, onToast }: Props) {
         </KeyboardAvoidingView>
       ) : loading ? <ActivityIndicator style={{ marginTop: 36 }} color="#91BFFF" /> : (
         <FlatList data={filtered} keyExtractor={(item) => item.id} contentContainerStyle={styles.list}
+          ListHeaderComponent={key ? <CloudRecoveryPanel vaultKey={key} hasLocalEntries={entries.length > 0} onToast={onToast} onRestored={async (recoveredKey) => { const restored = await loadPasswordEntries(recoveredKey); setKey(recoveredKey); setEntries(restored); setRevealed({}); setShowForm(false); }} /> : null}
           ListEmptyComponent={<View style={styles.empty}><Text style={styles.title}>{entries.length ? 'No matching passwords' : 'Your password vault is empty'}</Text><Text style={styles.hint}>Save website logins here. Passwords are encrypted before being stored.</Text></View>}
           renderItem={({ item }) => (
             <View style={styles.card}>
