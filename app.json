@@ -2,14 +2,14 @@
   "expo": {
     "name": "NEXORA",
     "slug": "mobile",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "nexora",
     "icon": "./assets/images/icon.png",
     "android": {
       "package": "com.nexora.authenticator",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "CAMERA"
       ],
