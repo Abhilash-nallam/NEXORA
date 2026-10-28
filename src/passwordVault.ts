@@ -2,6 +2,7 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY_NAME = 'nexora.password-vault.key.v1';
 const DATA_KEY = 'nexora.password-vault.encrypted.v1';
@@ -54,7 +55,7 @@ export async function unlockPasswordVault(): Promise<Uint8Array> {
 }
 
 export async function loadPasswordEntries(key: Uint8Array): Promise<PasswordEntry[]> {
-  const raw = await SecureStore.getItemAsync(DATA_KEY);
+  const raw = await AsyncStorage.getItem(DATA_KEY);
   if (!raw) return [];
   let envelope: Envelope;
   try {
@@ -85,9 +86,7 @@ export async function savePasswordEntries(key: Uint8Array, entries: PasswordEntr
     nonce: bytesToHex(nonce),
     ciphertext: bytesToHex(ciphertext),
   };
-  await SecureStore.setItemAsync(DATA_KEY, JSON.stringify(envelope), {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
+  await AsyncStorage.setItem(DATA_KEY, JSON.stringify(envelope));
 }
 
 function validateEntry(value: any): PasswordEntry {
