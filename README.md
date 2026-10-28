@@ -4,21 +4,23 @@
 [![Expo](https://img.shields.io/badge/Expo-57.0-000020.svg?logo=expo)](https://expo.dev)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB.svg?logo=react)](https://reactnative.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6.svg?logo=typescript)](https://www.typescriptlang.org)
-[![Security Audited](https://img.shields.io/badge/Security-Audited%20%26%20Hardened-success.svg)](https://github.com/Abhilash-nallam/NEXORA)
-[![Tests Passing](https://img.shields.io/badge/Tests-31%2F31%20Passed-brightgreen.svg)](https://github.com/Abhilash-nallam/NEXORA)
 
 NEXORA is a modern, privacy-focused Two-Factor Authentication (2FA) ecosystem consisting of:
 
-1. **A local-first, offline mobile authenticator app** (iOS & Android) engineered with zero telemetry, hardware-backed key storage, and military-grade encrypted backups.
+1. **A local-first, offline mobile authenticator app** (iOS & Android) engineered with zero telemetry, OS-protected key storage, and authenticated encrypted backups.
 2. **A production-ready reference 2FA backend engine** (Next.js & Supabase) implementing RFC 6238 TOTP verification, AES-256-GCM secret encryption, single-use bcrypt-hashed recovery codes, anti-replay guards, and timing-safe API endpoints.
 
 ---
 
-## Password Vault (new in development branch)
+## Password Vault and Encrypted Cloud Recovery
 
-The mobile app now includes a device-local password vault for website credentials, usernames, passwords, categories, and notes. Vault data is encrypted with XChaCha20-Poly1305 before persistence, using a random device-bound key held by Expo SecureStore behind the operating system's authentication prompt. The vault adds no master password and keeps the existing TOTP authenticator available.
+The mobile app combines the existing TOTP authenticator with a device-local password vault. Password entries are encrypted with XChaCha20-Poly1305 before persistence. Google Sign-In via Supabase Auth (PKCE) can authorize encrypted cloud recovery; Google identity is not used as an encryption key.
 
-**Scope note:** this initial implementation is local-only. Google Sign-In, cloud sync, and cross-device recovery are not yet wired; Google authentication is identity, not an encryption key. Review [Password Vault implementation notes](docs/PASSWORD_VAULT.md) before using this as a production password manager.
+Cloud recovery requires the Supabase Google provider, the app redirect URL, public Expo environment variables, and the SQL migration in [Password Vault and Cloud Recovery notes](docs/PASSWORD_VAULT.md). The app uploads only encrypted vault data and a recovery-key-wrapped vault key. A random 256-bit recovery key is shown once and must be saved privately; Google Sign-In alone cannot decrypt a vault if that key is lost. TOTP secrets remain in the existing local authenticator and are not uploaded by this feature.
+
+This integration must pass CI and physical-device/cloud tests before a production release. Never put Supabase service-role keys or Google client secrets in the mobile app.
+
+---
 
 ## Table of Contents
 
@@ -335,7 +337,7 @@ The repository has undergone a comprehensive code security audit and regression 
 6. **Non-Destructive Clipboard Clearing:** Added verification to ensure the clipboard auto-clear timeout only removes the specific OTP passcode copied, without wiping new clipboard entries.
 7. **RFC 4648 Base32 Secret Sanitization:** Aligned client-side Base32 regex validation to allow standard keys down to 7 characters.
 
-All 31 test suites across cryptographic modules, authentication pipelines, and state handlers pass with zero regressions.
+The repository's historical documentation reported 31 passing tests; the current branch must be verified by CI. That historical statement is not proof that the password vault or Google/cloud recovery has passed production testing.
 
 ---
 
