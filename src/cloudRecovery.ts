@@ -109,7 +109,7 @@ async function authRequest(path: string, body: Record<string, unknown>) {
 
 /** Starts Google OAuth using Supabase Auth PKCE; Google client secrets stay in Supabase, never in the app. */
 export async function signInWithGoogle(): Promise<GoogleSession> {
-  const { url, anonKey } = config();
+  const { url } = config();
   const verifier = bytesToHex(Crypto.getRandomBytes(32));
   const challengeHex = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, verifier, {
     encoding: Crypto.CryptoEncoding.HEX,
