@@ -77,6 +77,20 @@ export default function CloudRecoveryPanel({ vaultKey, hasLocalEntries, onRestor
     }
   };
 
+  const copyRecoveryKey = async () => {
+    try {
+      await Clipboard.setStringAsync(oneTimeCode);
+      onToast('Recovery key copied; clipboard clears in 30 seconds');
+      setTimeout(() => {
+        void Clipboard.getStringAsync()
+          .then((current) => current === oneTimeCode ? Clipboard.setStringAsync('') : undefined)
+          .catch(() => undefined);
+      }, 30_000);
+    } catch {
+      setStatus('Could not copy the recovery key. You can select the displayed key manually.');
+    }
+  };
+
   const enableRecovery = async () => {
     setBusy(true);
     setStatus('');
@@ -174,7 +188,7 @@ export default function CloudRecoveryPanel({ vaultKey, hasLocalEntries, onRestor
           <Text style={styles.recoveryTitle}>Save this recovery key now</Text>
           <Text style={styles.recoveryWarning}>It is shown only once. NEXORA does not store the recovery key itself. Anyone with this key and access to your Google account may recover your vault.</Text>
           <Text selectable style={styles.recoveryCode}>{oneTimeCode}</Text>
-          <Pressable onPress={() => void Clipboard.setStringAsync(oneTimeCode).then(() => onToast('Recovery key copied'))} style={styles.secondaryWide}>
+          <Pressable onPress={() => void copyRecoveryKey()} style={styles.secondaryWide}>
             <Text style={styles.secondaryText}>Copy recovery key</Text>
           </Pressable>
           <Pressable onPress={() => setShowNewCode(false)} style={styles.secondaryWide}>
