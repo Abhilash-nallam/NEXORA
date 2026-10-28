@@ -339,7 +339,7 @@ The repository has undergone a comprehensive code security audit and regression 
 6. **Non-Destructive Clipboard Clearing:** Added verification to ensure the clipboard auto-clear timeout only removes the specific OTP passcode copied, without wiping new clipboard entries.
 7. **RFC 4648 Base32 Secret Sanitization:** Aligned client-side Base32 regex validation to allow standard keys down to 7 characters.
 
-All 31 test suites across cryptographic modules, authentication pipelines, and state handlers pass with zero regressions.
+The repository's historical documentation reported 31 passing tests; the current branch must be verified by CI. That historical statement is not proof that the password vault or Google/cloud recovery has passed production testing.
 
 ---
 
