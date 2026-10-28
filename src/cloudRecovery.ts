@@ -122,13 +122,13 @@ export async function signInWithGoogle(): Promise<GoogleSession> {
   const authorize = `${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirect)}&code_challenge=${encodeURIComponent(challenge)}&code_challenge_method=s256`;
   return new Promise<GoogleSession>((resolve, reject) => {
     let settled = false;
-    let timeout: ReturnType<typeof setTimeout>;
-    let subscription: ReturnType<typeof Linking.addEventListener>;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let subscription: ReturnType<typeof Linking.addEventListener> | undefined;
     const finish = (error?: Error, session?: GoogleSession) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
-      subscription.remove();
+      if (timeout) clearTimeout(timeout);
+      subscription?.remove();
       if (error) reject(error);
       else if (session) resolve(session);
       else reject(new Error('Google sign-in did not complete.'));
