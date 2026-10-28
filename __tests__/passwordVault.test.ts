@@ -52,4 +52,27 @@ describe('encrypted password vault', () => {
     }));
     await expect(loadPasswordEntries(key)).rejects.toThrow('Could not decrypt the password vault');
   });
+  it('validates a recovered envelope before replacing local storage', async () => {
+    const key = await unlockPasswordVault();
+    const entry = {
+      id: 'entry-recovery', title: 'Recovery test', username: 'test-user',
+      password: 'do-not-leak', website: '', notes: '', category: 'General',
+      favorite: false, createdAt: 10, updatedAt: 20,
+    };
+    await savePasswordEntries(key, [entry]);
+    const envelope = await getEncryptedPasswordVaultSnapshot();
+    expect(envelope).not.toBeNull();
+    const original = [...mockAsyncValues.entries()];
+    const wrongKey = new Uint8Array(32).fill(7);
+
+    await expect(storeRecoveredPasswordVault(wrongKey, envelope!)).rejects.toThrow(
+      'Could not decrypt the password vault',
+    );
+    expect([...mockAsyncValues.entries()]).toEqual(original);
+
+    mockAsyncValues.clear();
+    await expect(storeRecoveredPasswordVault(key, envelope!)).resolves.toEqual([entry]);
+    await expect(loadPasswordEntries(key)).resolves.toEqual([entry]);
+  });
+
 });
