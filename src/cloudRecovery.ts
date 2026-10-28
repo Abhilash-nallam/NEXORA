@@ -249,7 +249,7 @@ export async function enableEncryptedCloudRecovery(vaultKey: Uint8Array): Promis
   };
   const session = await getGoogleSession();
   if (!session) throw new Error('Sign in with Google before enabling cloud recovery.');
-  const existingRows = await cloudRequest(`nexora_password_vaults?select=user_id&user_id=eq.\${encodeURIComponent(session.user.id)}`) as Array<{ user_id: string }>;
+  const existingRows = await cloudRequest(`nexora_password_vaults?select=user_id&user_id=eq.${encodeURIComponent(session.user.id)}`) as Array<{ user_id: string }>;
   if (Array.isArray(existingRows) && existingRows.length) {
     throw new Error('A cloud vault already exists for this account. Restore it with its recovery key before changing devices or recovery settings.');
   }
