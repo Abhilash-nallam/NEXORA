@@ -7,7 +7,7 @@
 
 NEXORA is a modern, privacy-focused Two-Factor Authentication (2FA) ecosystem consisting of:
 
-1. **A local-first, offline mobile authenticator app** (iOS & Android) engineered with zero telemetry, hardware-backed key storage, and military-grade encrypted backups.
+1. **A local-first, offline mobile authenticator app** (iOS & Android) engineered with zero telemetry, OS-protected key storage, and authenticated encrypted backups.
 2. **A production-ready reference 2FA backend engine** (Next.js & Supabase) implementing RFC 6238 TOTP verification, AES-256-GCM secret encryption, single-use bcrypt-hashed recovery codes, anti-replay guards, and timing-safe API endpoints.
 
 ---
