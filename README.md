@@ -4,8 +4,6 @@
 [![Expo](https://img.shields.io/badge/Expo-57.0-000020.svg?logo=expo)](https://expo.dev)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB.svg?logo=react)](https://reactnative.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6.svg?logo=typescript)](https://www.typescriptlang.org)
-[![Security Audited](https://img.shields.io/badge/Security-Audited%20%26%20Hardened-success.svg)](https://github.com/Abhilash-nallam/NEXORA)
-[![Tests Passing](https://img.shields.io/badge/Tests-31%2F31%20Passed-brightgreen.svg)](https://github.com/Abhilash-nallam/NEXORA)
 
 NEXORA is a modern, privacy-focused Two-Factor Authentication (2FA) ecosystem consisting of:
 
